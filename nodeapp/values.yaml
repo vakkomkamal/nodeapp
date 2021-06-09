@@ -21,9 +21,7 @@ image:
 
 replicaCount: 1
 
-## nodeapp server mode, i.e. standalone or distributed.
-## Distributed nodeapp ref: https://docs.nodeapp.io/docs/distributed-nodeapp-quickstart-guide
-##
+
 mode: standalone
 
 ## Additional labels to include with deployment or statefulset
@@ -164,8 +162,6 @@ serviceAccount:
   ## The name of the service account to use. If 'create' is 'true', a service account with that name
   ## will be created. Otherwise, a name will be auto-generated.
   name:
-
-drivesPerNode: 1
 
 
 livenessProbe:
