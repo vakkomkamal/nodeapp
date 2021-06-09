@@ -1,0 +1,19 @@
+mongodb:  
+  enabled: true
+  useStatefulSet: true
+  auth:
+    enabled: false
+  persistence:
+    enabled: true
+    size: 2Gi
+  fullnameOverride: mongodb
+  resources:
+    requests:
+      memory: "125Mi"
+      
+nodeapp:
+ autoscaling:
+   enabled: false
+ mode: distributed
+
+   

@@ -1,0 +1,9 @@
+dependencies:
+- name: mongodb
+  repository: https://charts.bitnami.com/bitnami
+  version: 9.3.1
+- name: nodeapp
+  repository: file://../../nodeapp
+  version: 0.1.0
+digest: sha256:4cdb9fde09b4ba2b5e42974c15d4ca511e6e848c75dc17c08acfdad70db74a71
+generated: "2021-06-07T21:29:54.073677946Z"

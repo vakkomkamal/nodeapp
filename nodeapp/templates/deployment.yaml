@@ -1,0 +1,132 @@
+{{- if eq .Values.mode "standalone" }}
+apiVersion: {{ template "nodeapp.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+  name: {{ template "nodeapp.fullname" . }}
+  labels:
+    app: {{ template "nodeapp.name" . }}
+    chart: {{ template "nodeapp.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+{{- if .Values.additionalLabels }}
+{{ toYaml .Values.additionalLabels | trimSuffix "\n" | indent 4 }}
+{{- end }}
+{{- if .Values.additionalAnnotations }}
+  annotations:
+{{ toYaml .Values.additionalAnnotations | trimSuffix "\n" | indent 4 }}
+{{- end }}
+spec:
+  strategy:
+    type: {{ .Values.DeploymentUpdate.type }}
+    {{- if eq .Values.DeploymentUpdate.type "RollingUpdate" }}
+    rollingUpdate:
+      maxSurge: {{ .Values.DeploymentUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.DeploymentUpdate.maxUnavailable }}
+    {{- end}}
+
+  selector:
+    matchLabels:
+      app: {{ template "nodeapp.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      name: {{ template "nodeapp.fullname" . }}
+      labels:
+        app: {{ template "nodeapp.name" . }}
+        release: {{ .Release.Name }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+      annotations:
+        checksum/secrets: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+{{- if .Values.podAnnotations }}
+{{ toYaml .Values.podAnnotations | trimSuffix "\n" | indent 8 }}
+{{- end }}
+    spec:
+  {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+  {{- end }}
+      serviceAccountName: {{ include "nodeapp.serviceAccountName" . | quote }}
+{{- if and .Values.securityContext.enabled .Values.persistence.enabled }}
+      securityContext:
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+{{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name:  MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "nodeapp.secretName" . }}
+                  key: mongouri
+            - name: NODE_ENV
+              value: production
+            - name: SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "nodeapp.secretName" . }}
+                  key: secret          
+            {{- range $key, $val := .Values.environment }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end}}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            exec:
+              command:
+              - cat
+              - /tmp/healthy
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- else if .Values.customLivenessProbe }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customLivenessProbe "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            exec:
+              command:
+              - cat
+              - /tmp/healthy
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- else if .Values.customReadinessProbe }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" .Values.customReadinessProbe "context" $) | nindent 12 }}
+          {{- end }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- include "nodeapp.imagePullSecrets" . | indent 6 }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+      volumes:
+        - name: export
+        {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "nodeapp.fullname" .) }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+{{ end }}

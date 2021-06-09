@@ -1,0 +1,8 @@
+dependencies:
+  - name: mongodb
+    version: 9.3.1
+    repository: https://charts.bitnami.com/bitnami
+    condition: mongodb.enabled
+  - name: nodeapp
+    repository: file://../../nodeapp
+    version: 1.0.0
